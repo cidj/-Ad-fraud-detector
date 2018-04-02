@@ -157,10 +157,10 @@ def not_normal_version(x):
 
 #helper functions to check if the ip is in suspicious subnet.
 def ip_in_subnet(ip,ips_obj):
-    return True in set(map(lambda x: ip in x, ips_obj))
+    return True in set(map(lambda x: ip in x if ip is not None else False, ips_obj))
 def check_ip_in_subnet(data,ip_subnet):    
-    ipstrlst=data['ip'].tolist()
-    theip=[ip.IPv4Address(i) for i in ipstrlst]
+    ipstrlst=data['ip'].astype(str).tolist()
+    theip=[ip.IPv4Address(i) if i!='nan' else None for i in ipstrlst ]
     ips_obj=[ip.IPv4Network(i+'/20') for i in ip_subnet]      
     res=pd.Series([ip_in_subnet(i,ips_obj) for i in theip],
                    name='IPs are in the /20 IP subnet')
@@ -222,7 +222,7 @@ def belongs_to_clusters(tmp,current_date):
     if_C=check_ip_in_list(tmp,ips)
     ip_in_lst=if_C['value'].astype(int).rename('ip_in_lst')
     
-    tmp['os_ver_reform']=tmp['os_version'].apply(strip_os_version)
+    tmp['os_ver_reform']=tmp['os_version'].astype(str).apply(strip_os_version)
     if_F=not_normal_version(tmp)
     if_ver_abnorm=if_F['value'].astype(int).rename('if_ver_abnorm')
     
@@ -274,12 +274,17 @@ def organize_result(if_A,if_B,if_C,if_F,if_E,kmcluster):
     
     result=pd.concat([kmcluster[report_content],value,reason],axis=1)
     
-    return result[result['value']].drop('value',axis=1)
+    ret=result[result['value']].drop('value',axis=1)
+    
+    print('oo1')
+    print(len(ret),len(result),len(ret)/len(result))
+    
+    return ret
 
 
 #For validation
     
-RECORD_FILE='all_networks20180305.csv'
+RECORD_FILE='report09.csv'
 resci=pd.read_csv(os.path.join(MODEL_FILES_PATH,RECORD_FILE),low_memory=False)
 def check_result(if_A,if_B,if_C,if_F,if_E,kmcluster,resci):
     kmcluster['rectified']=if_E['value'].astype(int)    
@@ -288,6 +293,19 @@ def check_result(if_A,if_B,if_C,if_F,if_E,kmcluster,resci):
     inter=np.intersect1d(tmpres,resci['adid'])
     print(len(inter))
     print(len(inter)/len(tmpres))
+    aa=kmcluster['adid'].astype(str)
+    bb=resci['adid'].astype(str)
+    aabb=np.intersect1d(aa,bb)
+    print('oo2')
+    print(len(aa),len(bb),len(aabb))
+    cca=kmcluster['adid'][if_A['value']].astype(str)
+    ccb=kmcluster['adid'][if_B['value']].astype(str)
+    ccc=kmcluster['adid'][if_C['value']].astype(str)
+    ccf=kmcluster['adid'][if_F['value']].astype(str)
+    cce=kmcluster['adid'][if_E['value']].astype(str)
+    print(len(cca),len(ccb),len(ccc),len(ccf),len(cce))
+    print(len(np.intersect1d(cca,bb)),len(np.intersect1d(ccb,bb)),len(np.intersect1d(ccc,bb)),
+          len(np.intersect1d(ccf,bb)),len(np.intersect1d(cce,bb)))
 
    
 def fraud_detector(current_date, input_file, output_file):
@@ -319,9 +337,9 @@ if __name__ == "__main__":
     
 #    result=fraud_detector(sys.argv[1],sys.argv[2],sys.argv[3])
     
-    current_date='2017-03-05'
-    input_file=os.path.join(MODEL_FILES_PATH,'result20180305.csv')
-    output_file=os.path.join(MODEL_FILES_PATH,'checker_result_new1.csv')
+    current_date='2017-10-01'
+    input_file=os.path.join(MODEL_FILES_PATH,'original_data20171001.csv')
+    output_file=os.path.join(MODEL_FILES_PATH,'checker_20171001.csv')
     
     import timeit
     start = timeit.default_timer()

@@ -266,26 +266,21 @@ sel_cols=['login_days','use_multiple_countries','ip_in_sub','country_unmatch','a
 #          'ip_switch_max_speed','login_days',  'psum','totalonlinetime', 'short_time', 'ip_in_lst',
 #          'ip_in_sub','country_unmatch', 'app_num']
 
-
-
-
-tmpselect_part0=tmptotal[sel_cols].fillna(tmptotal[sel_cols].mean())
-tmpmarker_part0=tmptotal['marker']
-
+tmpselect_part=tmptotal[sel_cols].fillna(tmptotal[sel_cols].mean())
+tmpmarker_part=tmptotal['marker']
 from sklearn.ensemble import RandomForestClassifier
 
 forest = RandomForestClassifier(max_depth=20, n_estimators=200,n_jobs=-1,max_features='sqrt')
-forest.fit(tmpselect_part0, tmpmarker_part0)
-features_selected = pd.Series(forest.feature_importances_,index=tmpselect_part0.columns)
+forest.fit(tmpselect_part, tmpmarker_part)
+features_selected = pd.Series(forest.feature_importances_,index=tmpselect_part.columns)
 features_sorted=features_selected.sort_values(ascending=False)
 
+#from sklearn.preprocessing import train_test_split
 
 
-from sklearn.model_selection import train_test_split
-tmp_train,tmp_test=train_test_split(tmptotal,random_state=1)
 
-tmpselect_part=tmp_train[sel_cols].fillna(tmp_train[sel_cols].mean())
-tmpmarker_part=tmp_train['marker']
+
+
 
 
 from sklearn.preprocessing import StandardScaler
@@ -298,11 +293,11 @@ weighs=np.ones(len(features_selected))
 t1=t0*weighs
 #t1=t0
 
-n_clusters=2000
+n_clusters=1000
 k1 = MiniBatchKMeans(init='k-means++', n_clusters=n_clusters, batch_size=1000, n_init=10)
 k1.fit(t1)
 k_r=k1.predict(t1)
-kmc=tmp_train.assign(predict=k_r)
+kmc=tmptotal.assign(predict=k_r)
 cs=k1.cluster_centers_
 
 kmc1=kmc[kmc['marker']==1]
@@ -376,43 +371,6 @@ print(comp[(comp['marker']==1)&(comp['rectified']==1)].shape)
 
 #from sklearn.metrics import classification_report
 #print(classification_report(comp['marker'],comp['rectified']))
-
-
-tmpselect_part2=tmp_test[sel_cols].fillna(tmp_test[sel_cols].mean())
-tmpmarker_part2=tmp_test['marker']
-
-tmpselect_part2_st0=s1.transform(tmpselect_part2)
-tmpselect_part2_st=tmpselect_part2_st0*weighs
-
-
-tmpselect_part2_res=k1.predict(tmpselect_part2_st)
-tmpcluster=tmp_test.assign(predict=tmpselect_part2_res)
-
-tmpcluster['dis']=pd.Series(map(lambda x1,x2: paired_distances(x1.reshape(1,-1),cs[x2].reshape(1,-1))[0],
-        tmpselect_part2_st,tmpselect_part2_res))
-
-pick_clusters1=pick_clusters
-#pick_clusters1=resee.index.tolist()
-tmpcluster['rectified_1']=tmpcluster['predict'].isin(pick_clusters1).astype(int)
-
-tmpcluster['dis0']=tmpcluster['predict'].map(tt['dis'])
-
-tmpclustert=tmpcluster[tmpcluster['predict'].isin(pick_clusters)]
-tmpclustert1=tmpclustert[tmpclustert['dis']>tmpclustert['dis0']]
-
-
-print(tmpcluster['rectified_1'].groupby(tmpcluster['rectified_1']).count())
-
-tmpcluster_res=tmpcluster['adid'][tmpcluster['rectified_1']==1]
-
-from sklearn.metrics import classification_report
-
-print(classification_report(tmpcluster['rectified_1'],tmpcluster['marker']))
-
-
-
-
-
 
 end=timeit.default_timer()
 print(end-start)  
